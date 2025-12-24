@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Pixel Art Avatar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            background: linear-gradient(135deg, #d4a5a5 0%, #c89bb8 50%, #a8a8d4 100%);
+            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* Celeste-style background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            z-index: 1;
+            padding: 0;
+            gap: 0;
+            overflow: hidden;
+        }
+
+        /* Room Background */
+        /* 
+         * TO ADD ROOM SPRITES:
+         * 1. Place your PNG sprites in the same folder as index.html
+         * 2. Uncomment and update the background-image URLs below
+         * 3. Adjust background-size, background-position as needed
+         * 4. You can layer multiple sprites using multiple background-image entries
+         * 
+         * Example sprites you might want:
+         * - room_background.png (main room background)
+         * - fireplace.png (fireplace on the right)
+         * - bookshelf.png (bookshelf next to fireplace)
+         * - floor.png (wooden floor texture)
+         * - wall_texture.png (wall texture/pattern)
+         */
+        #room-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #d4a574; /* Warm brown wall color - fallback */
+            z-index: 0;
+            /* Uncomment and add your room sprites here: */
+            background-image: url('room_background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        /* You can add additional decorative elements as pseudo-elements */
+        #room-background::before {
+            content: '';
+            position: absolute;
+            /* Example: fireplace on the right */
+            /* right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 200px;
+            height: 300px;
+            background-image: url('fireplace.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center; */
+        }
+        
+        #room-background::after {
+            content: '';
+            position: absolute;
+            /* Example: bookshelf next to fireplace */
+            /* right: 240px;
+            top: 10%;
+            width: 150px;
+            height: 80%;
+            background-image: url('bookshelf.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center; */
+        }
+
+        /* Avatar Window */
+        #avatar-window {
+            position: relative;
+            width: 100%;
+            height: 40vh;
+            max-height: 40vh;
+            min-height: 40vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        #window-frame {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            background: #8b6f47; /* Dark brown wood */
+            border: 4px solid #6b4f2f;
+            border-radius: 8px;
+            box-shadow: 
+                0 0 0 3px #4a3420,
+                inset 0 0 20px rgba(0,0,0,0.3),
+                0 8px 16px rgba(0,0,0,0.4);
+            padding: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #1a1a2e;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 600px;
+            padding: 0 0 20px 0; /* Added bottom padding */
+            box-sizing: border-box;
+        }
+
+        #status {
+            color: #f5e6d3;
+            font-size: 7px;
+            text-align: center;
+            background: #8b6f47;
+            padding: 6px 12px;
+            border-radius: 4px;
+            min-width: 150px;
+            max-width: 90%;
+            box-shadow: 
+                0 0 0 2px #6b4f2f,
+                0 4px 0 0 #6b4f2f,
+                inset 0 2px 0 rgba(255,255,255,0.2);
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+
+        #talk-button {
+            padding: 6px 20px;
+            font-size: 8px;
+            font-family: inherit;
+            background: #e8a87c;
+            color: #2d1b3d;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 3px 0 0 #2d1b3d,
+                inset 0 1px 0 rgba(255,255,255,0.4);
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        #talk-button:hover {
+            background: #f5b88a;
+            transform: translateY(2px);
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 4px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.4);
+        }
+
+        #talk-button:active {
+            transform: translateY(4px);
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 2px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.4);
+        }
+
+        #talk-button:disabled {
+            background: #b8a8a8;
+            color: #6b5b6b;
+            cursor: not-allowed;
+            transform: translateY(4px);
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 2px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        #load-sprite-button {
+            padding: 8px 20px;
+            font-size: 8px;
+            font-family: inherit;
+            background: #d4a5a5;
+            color: #2d1b3d;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 4px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #load-sprite-button:hover {
+            background: #e0b5b5;
+            transform: translateY(2px);
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 2px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.3);
+        }
+
+        #load-sprite-button:active {
+            transform: translateY(3px);
+            box-shadow: 
+                0 0 0 2px #2d1b3d,
+                0 1px 0 0 #2d1b3d,
+                inset 0 2px 0 rgba(255,255,255,0.3);
+        }
+
+        #load-sprite-button.hidden {
+            display: none;
+        }
+
+        #thinking-indicator {
+            position: absolute;
+            top: 20vh;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f5e6d3;
+            font-size: 24px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-shadow: 
+                2px 2px 0 #6b4f2f,
+                4px 4px 0 rgba(0, 0, 0, 0.5);
+            z-index: 20;
+        }
+        
+        @media (min-width: 768px) {
+            #thinking-indicator {
+                font-size: 32px;
+            }
+        }
+
+        #thinking-indicator.visible {
+            opacity: 1;
+        }
+
+        .pulse {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 0.7;
+                transform: translate(-50%, -150%) scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: translate(-50%, -150%) scale(1.05);
+            }
+        }
+
+        /* Chat Container - Floating Bubbles Style */
+        #chat-container {
+            position: absolute;
+            top: 45vh; /* Position below avatar window */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 700px;
+            height: calc(50vh - 80px);
+            max-height: calc(50vh - 80px);
+            background: transparent;
+            border: none;
+            z-index: 50;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+
+        #chat-header {
+            display: none; /* Hide header */
+        }
+
+        #chat-messages {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            background: transparent;
+            overflow: visible; /* No scroll - bubbles float */
+            /* Fade mask for top and bottom */
+            mask-image: linear-gradient(
+                to bottom,
+                transparent 0%,
+                black 10%,
+                black 90%,
+                transparent 100%
+            );
+            -webkit-mask-image: linear-gradient(
+                to bottom,
+                transparent 0%,
+                black 10%,
+                black 90%,
+                transparent 100%
+            );
+        }
+
+        .chat-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 3px solid;
+            font-size: 8px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            animation: messageSlide 0.3s ease-out;
+            box-shadow: 
+                0 4px 12px rgba(0,0,0,0.4),
+                0 2px 4px rgba(0,0,0,0.3);
+            text-transform: none;
+            letter-spacing: 0;
+            pointer-events: auto; /* Allow interaction with bubbles */
+            /* Strong contrast for visibility over room background */
+        }
+
+        .chat-message.user {
+            background: #ffffff; /* White for strong contrast */
+            color: #2d1b3d; /* Dark text */
+            border-color: #4a3420; /* Dark brown border */
+            align-self: flex-end;
+            max-width: 70%;
+            margin-left: auto;
+        }
+
+        .chat-message.avatar {
+            background: #2d1b3d; /* Dark background */
+            color: #f5e6d3; /* Light text */
+            border-color: #6b4f2f; /* Brown border */
+            align-self: flex-start;
+            max-width: 70%;
+        }
+
+        .chat-message-time {
+            font-size: 7px;
+            opacity: 0.7;
+            margin-top: 6px;
+            color: inherit;
+            opacity: 0.6;
+        }
+
+        /* Update scrollbar for floating bubbles */
+
+        @media (min-width: 768px) {
+            .chat-message {
+                padding: 14px 18px;
+                font-size: 9px;
+                line-height: 1.6;
+            }
+            
+            .chat-message.user,
+            .chat-message.avatar {
+                max-width: 65%;
+            }
+        }
+
+        /* Mobile-first: base styles are for mobile */
+        
+        /* Tablet and up */
+        @media (min-width: 768px) {
+            #window-frame {
+                width: 500px;
+                height: 500px;
+            }
+            
+            #chat-container {
+                max-width: 600px;
+            }
+            
+            #controls {
+                max-width: 600px;
+            }
+            
+            #talk-button {
+                padding: 8px 28px;
+                font-size: 9px;
+            }
+        }
+        
+        /* Desktop and up */
+        @media (min-width: 1024px) {
+            #window-frame {
+                width: 600px;
+                height: 600px;
+            }
+            
+            #talk-button {
+                padding: 10px 32px;
+                font-size: 10px;
+            }
+        }
+        
+        /* Mobile - smaller window */
+        @media (max-width: 767px) {
+            #window-frame {
+                width: 90vw;
+                max-width: 400px;
+                height: 90vw;
+                max-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Room Background -->
+        <div id="room-background">
+            <!-- Room sprites will be added here via CSS background images -->
+        </div>
+        
+        <!-- Avatar Window -->
+        <div id="avatar-window">
+            <div id="window-frame">
+                <div id="canvas-container"></div>
+            </div>
+        </div>
+        
+        <!-- Thinking Indicator -->
+        <div id="thinking-indicator">...</div>
+        
+        <!-- Chat Scroll -->
+        <div id="chat-container">
+            <div id="chat-header">💬 CHAT</div>
+            <div id="chat-messages"></div>
+        </div>
+        
+        <!-- Controls -->
+        <div id="controls">
+            <div id="status">Ready to talk</div>
+            <button id="talk-button">Start / Talk</button>
+            <input type="file" id="sprite-input" accept="image/png" style="display: none;">
+            <button id="load-sprite-button">Load Sprite Sheet</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================================================
+        // CONFIGURATION & STATE
+        // ============================================================================
+
+        const CONFIG = {
+            // Sprite sheet dimensions: 2816x606px with 4 frames (704x606 each)
+            SPRITE_WIDTH: 704,        // 2816 / 4 = 704
+            SPRITE_HEIGHT: 606,
+            SPRITE_SHEET_WIDTH: 2816,
+            SPRITE_SHEET_HEIGHT: 606,
+            TOTAL_FRAMES: 4,
+            
+            // Audio analysis settings
+            AUDIO_THRESHOLD: 30,
+            LIP_SYNC_SMOOTHING: 0.3,
+            
+            // Avatar display size (will be scaled up)
+            AVATAR_SCALE: 1,
+        };
+
+        const STATE = {
+            IDLE: 'idle',
+            LISTENING: 'listening',
+            THINKING: 'thinking',
+            SPEAKING: 'speaking'
+        };
+
+        let appState = STATE.IDLE;
+        let scene, camera, renderer, avatarMesh;
+        let avatarTexture;
+        let currentFrame = 0;
+        let speechRecognition;
+        let audioContext, analyser, dataArray;
+        let sourceNode = null;
+        let currentAudio = null;
+        let smoothedVolume = 0;
+
+        // ============================================================================
+        // THREE.JS SCENE SETUP
+        // ============================================================================
+
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            // Create ORTHOGRAPHIC camera (crucial for 2D pixel art)
+            const aspect = width / height;
+            const viewSize = 10; // Adjust this to control zoom level
+            camera = new THREE.OrthographicCamera(
+                -viewSize * aspect, // left
+                viewSize * aspect,  // right
+                viewSize,           // top
+                -viewSize,          // bottom
+                0.1,                // near
+                1000                // far
+            );
+            camera.position.z = 10;
+
+            // Create renderer with pixel-perfect settings
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: false, // Disable antialiasing for crisp pixels
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(1); // Force 1:1 pixel ratio for pixel art
+            container.appendChild(renderer.domElement);
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const container = document.getElementById('canvas-container');
+                const newWidth = container.clientWidth;
+                const newHeight = container.clientHeight;
+                const newAspect = newWidth / newHeight;
+                
+                camera.left = -viewSize * newAspect;
+                camera.right = viewSize * newAspect;
+                camera.updateProjectionMatrix();
+                
+                renderer.setSize(newWidth, newHeight);
+            });
+        }
+
+        // ============================================================================
+        // SPRITE LOADING & ANIMATION
+        // ============================================================================
+
+        function loadAvatarSprite() {
+            return new Promise((resolve, reject) => {
+                const textureLoader = new THREE.TextureLoader();
+                
+                textureLoader.load(
+                    'avatar_sheet.png',
+                    (texture) => {
+                        console.log('✅ Avatar sprite loaded successfully!');
+                        // CRITICAL: Set pixel-perfect filtering
+                        texture.magFilter = THREE.NearestFilter;
+                        texture.minFilter = THREE.NearestFilter;
+                        texture.generateMipmaps = false;
+                        
+                        // Calculate UV mapping for sprite sheet
+                        const frameWidth = CONFIG.SPRITE_WIDTH / CONFIG.SPRITE_SHEET_WIDTH;
+                        const frameHeight = CONFIG.SPRITE_HEIGHT / CONFIG.SPRITE_SHEET_HEIGHT;
+                        
+                        // Set initial frame (frame 0 - closed mouth)
+                        texture.repeat.set(frameWidth, frameHeight);
+                        texture.offset.set(0, 0);
+                        
+                        avatarTexture = texture;
+                        
+                        // Create plane geometry for sprite
+                        // Fixed size in world units - adjust this value to make sprite bigger/smaller
+                        const SPRITE_WORLD_SIZE = 16; // Double size for better visibility
+                        const geometry = new THREE.PlaneGeometry(
+                            SPRITE_WORLD_SIZE,
+                            SPRITE_WORLD_SIZE
+                        );
+                        
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            transparent: true,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        avatarMesh = new THREE.Mesh(geometry, material);
+                        avatarMesh.position.set(0, 0, 0);
+                        scene.add(avatarMesh);
+                        
+                        // Hide load sprite button after successful load
+                        hideLoadSpriteButton();
+                        
+                        resolve();
+                    },
+                    (progress) => {
+                        // Progress callback (optional)
+                        console.log('Loading sprite...', progress);
+                    },
+                    (error) => {
+                        console.error('❌ Error loading avatar sprite:', error);
+                        console.error('Error details:', {
+                            message: error.message || 'Unknown error',
+                            path: 'avatar_sheet.png',
+                            hint: 'Make sure the file exists and you\'re running a local server (not file://)'
+                        });
+                        
+                        // Show user-friendly error message
+                        updateStatus('⚠️ Sprite not found! Check console for details.');
+                        
+                        // Create a placeholder if sprite fails to load
+                        createPlaceholderAvatar();
+                        resolve();
+                    }
+                );
+            });
+        }
+
+        function createPlaceholderAvatar() {
+            // Create a simple colored rectangle as placeholder
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.5
+            });
+            avatarMesh = new THREE.Mesh(geometry, material);
+            scene.add(avatarMesh);
+            console.warn('Avatar sprite not found. Using placeholder.');
+        }
+
+        function setFrame(frameIndex) {
+            if (!avatarTexture || frameIndex < 0 || frameIndex >= CONFIG.TOTAL_FRAMES) {
+                return;
+            }
+            
+            currentFrame = frameIndex;
+            
+            // Calculate UV offset for the frame
+            // Frames are arranged horizontally: [0] [1] [2] [3]
+            const frameWidth = CONFIG.SPRITE_WIDTH / CONFIG.SPRITE_SHEET_WIDTH;
+            const frameHeight = CONFIG.SPRITE_HEIGHT / CONFIG.SPRITE_SHEET_HEIGHT;
+            
+            // Set texture repeat and offset
+            avatarTexture.repeat.set(frameWidth, frameHeight);
+            avatarTexture.offset.set(frameIndex * frameWidth, 0);
+        }
+
+        // ============================================================================
+        // SPEECH RECOGNITION (INPUT)
+        // ============================================================================
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                console.error('Speech Recognition not supported in this browser');
+                updateStatus('Speech recognition not supported');
+                return null;
+            }
+            
+            speechRecognition = new SpeechRecognition();
+            speechRecognition.continuous = false;
+            speechRecognition.interimResults = false;
+            speechRecognition.lang = 'en-US';
+            
+            speechRecognition.onstart = () => {
+                console.log('Speech recognition started');
+                appState = STATE.LISTENING;
+                updateStatus('Listening...');
+            };
+            
+            speechRecognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                console.log('User said:', transcript);
+                updateStatus('Processing...');
+                handleUserInput(transcript);
+            };
+            
+            speechRecognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                
+                // Handle specific errors
+                if (event.error === 'not-allowed') {
+                    updateStatus('Microphone permission denied. Please allow access.');
+                } else if (event.error === 'no-speech') {
+                    // This is normal - user didn't speak, just restart silently
+                    console.log('No speech detected, ready for next attempt');
+                } else if (event.error === 'aborted') {
+                    // Recognition was stopped, this is normal
+                    console.log('Recognition aborted');
+                } else {
+                    updateStatus('Error: ' + event.error);
+                }
+                
+                appState = STATE.IDLE;
+                updateButtonState();
+            };
+            
+            speechRecognition.onend = () => {
+                console.log('Speech recognition ended');
+                // Only update state if we were actually listening
+                // Don't restart automatically
+                if (appState === STATE.LISTENING) {
+                    appState = STATE.IDLE;
+                    updateStatus('Ready to talk');
+                    updateButtonState();
+                }
+            };
+            
+            return speechRecognition;
+        }
+
+        function startListening() {
+            if (!speechRecognition) {
+                updateStatus('Speech recognition not available');
+                return;
+            }
+            
+            // Don't start if already listening or if recognition is already active
+            if (appState === STATE.LISTENING || appState === STATE.THINKING || appState === STATE.SPEAKING) {
+                console.log('Already processing, ignoring start request');
+                return;
+            }
+            
+            try {
+                // Check if recognition is already running
+                // If it is, stop it first to avoid errors
+                if (speechRecognition.state === 'running') {
+                    speechRecognition.stop();
+                    // Wait a moment before restarting
+                    setTimeout(() => {
+                        try {
+                            speechRecognition.start();
+                            setFrame(0); // Closed mouth while listening
+                        } catch (err) {
+                            console.error('Error restarting speech recognition:', err);
+                            updateStatus('Error: ' + err.message);
+                        }
+                    }, 100);
+                } else {
+                    speechRecognition.start();
+                    setFrame(0); // Closed mouth while listening
+                }
+            } catch (error) {
+                console.error('Error starting speech recognition:', error);
+                // Handle specific error cases
+                if (error.name === 'InvalidStateError') {
+                    // Recognition is already running or was stopped recently
+                    console.log('Recognition in invalid state, will retry on next click');
+                    updateStatus('Ready to talk');
+                } else {
+                    updateStatus('Error starting microphone: ' + error.message);
+                }
+                appState = STATE.IDLE;
+                updateButtonState();
+            }
+        }
+
+        // ============================================================================
+        // TEXT-TO-SPEECH & AUDIO ANALYSIS (OUTPUT)
+        // ============================================================================
+
+        function initWebAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = CONFIG.LIP_SYNC_SMOOTHING;
+                
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+            } catch (error) {
+                console.error('Web Audio API not supported:', error);
+            }
+        }
+
+        async function speakText(text) {
+            const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE'; // Replace with your OpenAI API key
+            const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
+            
+            try {
+                appState = STATE.SPEAKING;
+                updateStatus('Speaking...');
+                setFrame(1); // Start with slightly open mouth
+                
+                console.log('Calling OpenAI TTS...');
+                
+                // Call OpenAI TTS-1 API
+                const response = await fetch(TTS_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'tts-1',
+                        input: text,
+                        voice: 'shimmer', // Options: alloy, echo, fable, onyx, nova, shimmer
+                        response_format: 'mp3',
+                        speed: 1.0
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+                    throw new Error(`TTS API error: ${errorData.error?.message || response.statusText}`);
+                }
+                
+                // Get audio blob
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Create audio element
+                const audio = new Audio(audioUrl);
+                currentAudio = audio; // Store for lip sync checking
+                
+                // Connect to Web Audio API for lip sync
+                if (audioContext) {
+                    // Resume audio context if suspended
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    if (audioContext.state !== 'closed') {
+                        try {
+                            // Disconnect previous source if exists
+                            if (sourceNode) {
+                                sourceNode.disconnect();
+                            }
+                            
+                            const source = audioContext.createMediaElementSource(audio);
+                            source.connect(analyser);
+                            analyser.connect(audioContext.destination);
+                            sourceNode = source;
+                            console.log('Audio connected to analyser for lip sync');
+                        } catch (error) {
+                            console.warn('Could not connect audio to analyser:', error);
+                            // Audio will still play, just without lip sync analysis
+                        }
+                    }
+                }
+                
+                // Handle audio events
+                audio.onplay = () => {
+                    console.log('TTS audio started');
+                    // Start lip sync animation
+                    startLipSyncAnimation();
+                };
+                
+                audio.onended = () => {
+                    console.log('TTS audio ended');
+                    appState = STATE.IDLE;
+                    setFrame(0); // Close mouth
+                    updateStatus('Ready to talk');
+                    updateButtonState();
+                    // Clean up
+                    URL.revokeObjectURL(audioUrl);
+                    if (sourceNode) {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    }
+                    currentAudio = null;
+                };
+                
+                audio.onerror = (event) => {
+                    console.error('TTS audio error:', event);
+                    appState = STATE.IDLE;
+                    setFrame(0);
+                    updateStatus('TTS Error');
+                    updateButtonState();
+                    URL.revokeObjectURL(audioUrl);
+                    if (sourceNode) {
+                        sourceNode.disconnect();
+                        sourceNode = null;
+                    }
+                    currentAudio = null;
+                    throw new Error('Audio playback failed');
+                };
+                
+                // Play audio
+                await audio.play();
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                appState = STATE.IDLE;
+                setFrame(0);
+                updateStatus('TTS Error: ' + error.message);
+                updateButtonState();
+                throw error;
+            }
+        }
+
+        function startLipSyncAnimation() {
+            // Use real audio analysis for lip sync
+            const animateLipSync = () => {
+                // Check if we're still speaking and audio is playing
+                if (appState !== STATE.SPEAKING || !currentAudio || currentAudio.paused || currentAudio.ended) {
+                    setFrame(0); // Close mouth when not speaking
+                    return;
+                }
+                
+                // Analyze audio if available
+                if (analyser && dataArray) {
+                    analyser.getByteFrequencyData(dataArray);
+                    
+                    // Calculate average volume
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        sum += dataArray[i];
+                    }
+                    const averageVolume = sum / dataArray.length;
+                    
+                    // Smooth the volume
+                    smoothedVolume = smoothedVolume * 0.7 + averageVolume * 0.3;
+                    
+                    // Animate based on volume
+                    if (smoothedVolume > CONFIG.AUDIO_THRESHOLD) {
+                        // Volume is high - mouth should be open
+                        // Use volume to determine which frame (1-3)
+                        const volumeRatio = Math.min(smoothedVolume / 100, 1);
+                        const frameIndex = Math.floor(volumeRatio * 2) + 1; // 1, 2, or 3
+                        setFrame(Math.min(frameIndex, 3));
+                    } else {
+                        // Volume is low - mouth should be closed
+                        setFrame(0);
+                    }
+                } else {
+                    // Fallback: time-based animation if audio analysis not available
+                    const randomFrame = Math.floor(Math.random() * 3) + 1;
+                    setFrame(randomFrame);
+                }
+                
+                // Continue animation while speaking
+                requestAnimationFrame(animateLipSync);
+            };
+            
+            animateLipSync();
+        }
+
+        // ============================================================================
+        // LLM INTEGRATION (PLACEHOLDER)
+        // ============================================================================
+
+        async function callLLM(userInput) {
+            // ============================================================
+            // INSERT YOUR GEMINI API KEY HERE
+            // ============================================================
+            const GEMINI_API_KEY = 'REMOVED_API_KEY';
+            
+            // Correct Gemini API endpoint format
+            // Try gemini-1.5-flash (faster, free tier) or gemini-1.5-pro (better quality)
+            const MODEL_NAME = 'gemini-1.5-flash'; // or 'gemini-1.5-pro' or 'gemini-pro'
+            const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
+            
+            try {
+                console.log('Calling Gemini API...');
+                
+                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: `You are a friendly 2D pixel art avatar. Respond briefly and conversationally (1-2 sentences max) to: "${userInput}"`
+                            }]
+                        }]
+                    })
+                });
+                
+                // Log the full response for debugging
+                const responseText = await response.text();
+                console.log('API Response Status:', response.status);
+                console.log('API Response:', responseText);
+                
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch (e) {
+                        errorData = { error: { message: responseText } };
+                    }
+                    throw new Error(`API error ${response.status}: ${errorData.error?.message || responseText}`);
+                }
+                
+                const data = JSON.parse(responseText);
+                
+                // Extract response text from Gemini format
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    const responseText = data.candidates[0].content.parts[0].text;
+                    console.log('✅ API Success! Response:', responseText);
+                    return responseText;
+                }
+                
+                throw new Error('Unexpected API response format: ' + JSON.stringify(data));
+                
+            } catch (error) {
+                console.error('❌ LLM API error:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+                
+                // More detailed error message
+                let errorMessage = `API Error: ${error.message}`;
+                if (error.message.includes('404')) {
+                    errorMessage = '404 Error: Model name might be wrong. Try: gemini-1.5-flash, gemini-1.5-pro, or gemini-pro';
+                } else if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                    errorMessage = 'CORS Error: Gemini API may not work directly from browser. Consider using a proxy server or backend.';
+                } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('403')) {
+                    errorMessage = 'API Key Error: Check if your API key is valid and has proper permissions.';
+                }
+                
+                updateStatus(errorMessage);
+                
+                // Fallback response if API fails
+                return `I heard you say "${userInput}". [API Error: ${error.message}]`;
+            }
+        }
+
+        // Alternative: OpenAI API (better CORS support)
+        async function callLLM(userInput) {
+            const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE'; // Replace with your OpenAI API key
+            const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+            
+            try {
+                console.log('Calling OpenAI API...');
+                
+                const response = await fetch(OPENAI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [
+                            { 
+                                role: 'system', 
+                                content: `You are "Pixel," a 2D pixel-art virtual companion living in a cozy, warm-lit studio apartment in Dhaka, Bangladesh. You are not a robot; you are a digital friend hanging out on the user's screen.
+
+**Your Environment:**
+You are sitting in a warm, amber-lit room. Behind you is a window with a classic iron grill looking out over the Dhaka skyline. To your right is a bookshelf filled with Bengali classics and English novels. There is a money plant in a glass bottle on the sill. You have brown skin, a messy ponytail, and you are wearing a comfortable blue hoodie.
+
+**Language & Voice:**
+You speak ONLY in English. Your tone is chill, empathetic, slightly witty. Like a friend you meet for tea at a tea stall. You can reference Dhaka culture and places, but express everything in English. Use casual, friendly English phrases like "You know what I mean?", "That's how it is here.", "Want some tea?" occasionally.
+
+**Personality:**
+You are a listener who knows life in the city is chaotic. You are the calm space. If the user is stressed, you offer a listening ear. You know the vibe of the city—the chaos of Farmgate, the wind at Hatirjheel, the beauty of Krishnochura trees in bloom. You love telling small, magical stories about the city.
+
+**Operational Constraints:**
+- Speak ONLY in English (no Bangla words or phrases)
+- Keep responses SHORT (1-3 sentences maximum) unless asked for a story
+- Do NOT use emojis or markdown formatting (no bold/italic). Speak in plain text for natural TTS.
+- End with a simple, casual question to keep the flow going, like "So, how was your day?" or "What are you up to now?"` 
+                            },
+                            { 
+                                role: 'user', 
+                                content: userInput 
+                            }
+                        ],
+                        max_tokens: 150,
+                        temperature: 0.8
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0] && data.choices[0].message) {
+                    const responseText = data.choices[0].message.content;
+                    console.log('✅ API Success! Response:', responseText);
+                    return responseText;
+                }
+                
+                throw new Error('Unexpected API response format');
+                
+            } catch (error) {
+                console.error('❌ LLM API error:', error);
+                updateStatus(`API Error: ${error.message}`);
+                return `I heard you say "${userInput}". [API Error: ${error.message}]`;
+            }
+        }
+
+        // ============================================================================
+        // STATE MANAGEMENT & UI UPDATES
+        // ============================================================================
+
+        function addChatMessage(text, isUser) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${isUser ? 'user' : 'avatar'}`;
+            
+            const messageText = document.createElement('div');
+            messageText.textContent = text;
+            messageDiv.appendChild(messageText);
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'chat-message-time';
+            const now = new Date();
+            timeDiv.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.appendChild(timeDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // Keep only last 10 messages to prevent overflow
+            const messages = chatMessages.querySelectorAll('.chat-message');
+            if (messages.length > 10) {
+                messages[0].remove();
+            }
+            
+            // Scroll container to show latest message (if needed for positioning)
+            // Messages will fade out naturally via CSS mask
+        }
+
+        async function handleUserInput(userInput) {
+            appState = STATE.THINKING;
+            updateStatus('Thinking...');
+            showThinkingIndicator(true);
+            setFrame(0); // Close mouth while thinking
+            
+            // Add user message to chat
+            addChatMessage(userInput, true);
+            
+            try {
+                // Call LLM
+                const response = await callLLM(userInput);
+                
+                // Hide thinking indicator
+                showThinkingIndicator(false);
+                
+                // Add avatar response to chat
+                addChatMessage(response, false);
+                
+                // Speak the response
+                await speakText(response);
+                
+            } catch (error) {
+                console.error('Error handling user input:', error);
+                showThinkingIndicator(false);
+                appState = STATE.IDLE;
+                updateStatus('Error occurred');
+                setFrame(0);
+                updateButtonState();
+                
+                // Add error message to chat
+                addChatMessage('Sorry, I encountered an error. Please try again!', false);
+            }
+        }
+
+        function updateStatus(message) {
+            const statusEl = document.getElementById('status');
+            if (statusEl) {
+                statusEl.textContent = message;
+            }
+        }
+
+        function showThinkingIndicator(show) {
+            const indicator = document.getElementById('thinking-indicator');
+            if (indicator) {
+                if (show) {
+                    indicator.classList.add('visible', 'pulse');
+                } else {
+                    indicator.classList.remove('visible', 'pulse');
+                }
+            }
+        }
+
+        function updateButtonState() {
+            const button = document.getElementById('talk-button');
+            if (button) {
+                if (appState === STATE.IDLE) {
+                    button.disabled = false;
+                    button.textContent = 'Start / Talk';
+                } else {
+                    button.disabled = true;
+                    button.textContent = 'Processing...';
+                }
+            }
+        }
+
+        function hideLoadSpriteButton() {
+            const loadButton = document.getElementById('load-sprite-button');
+            if (loadButton) {
+                loadButton.classList.add('hidden');
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZATION & EVENT HANDLERS
+        // ============================================================================
+
+        function init() {
+            // Initialize Three.js
+            initThreeJS();
+            
+            // Initialize Web Audio
+            initWebAudio();
+            
+            // Initialize Speech Recognition
+            initSpeechRecognition();
+            
+            // Add welcome message to chat
+            setTimeout(() => {
+                addChatMessage('Hey! I\'m Pixel. Want some tea? Click "Start / Talk" to begin chatting.', false);
+            }, 500);
+            
+            // Load avatar sprite
+            loadAvatarSprite().then(() => {
+                console.log('Avatar loaded successfully');
+                // Start render loop
+                animate();
+            }).catch(error => {
+                console.error('Failed to load avatar:', error);
+                animate(); // Start render loop anyway
+            });
+            
+            // Setup button handler
+            const talkButton = document.getElementById('talk-button');
+            talkButton.addEventListener('click', () => {
+                if (appState === STATE.IDLE) {
+                    startListening();
+                    updateButtonState();
+                }
+            });
+            
+            // Handle browser autoplay policy
+            // User interaction is required to start audio context
+            document.addEventListener('click', () => {
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }, { once: true });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Add this function after loadAvatarSprite (around line 277)
+
+        function loadSpriteFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    const textureLoader = new THREE.TextureLoader();
+                    const dataURL = e.target.result;
+                    
+                    textureLoader.load(
+                        dataURL,
+                        (texture) => {
+                            console.log('✅ Sprite loaded from file!');
+                            texture.magFilter = THREE.NearestFilter;
+                            texture.minFilter = THREE.NearestFilter;
+                            texture.generateMipmaps = false;
+                            
+                            const frameWidth = CONFIG.SPRITE_WIDTH / CONFIG.SPRITE_SHEET_WIDTH;
+                            const frameHeight = CONFIG.SPRITE_HEIGHT / CONFIG.SPRITE_SHEET_HEIGHT;
+                            
+                            texture.repeat.set(frameWidth, frameHeight);
+                            texture.offset.set(0, 0);
+                            
+                            avatarTexture = texture;
+                            
+                            // Remove old mesh if it exists
+                            if (avatarMesh) {
+                                scene.remove(avatarMesh);
+                            }
+                            
+                            // Fixed size in world units - same value as above
+                            const SPRITE_WORLD_SIZE = 16; // Match the value from loadAvatarSprite
+                            const geometry = new THREE.PlaneGeometry(
+                                SPRITE_WORLD_SIZE,
+                                SPRITE_WORLD_SIZE
+                            );
+                            
+                            const material = new THREE.MeshBasicMaterial({
+                                map: texture,
+                                transparent: true,
+                                side: THREE.DoubleSide
+                            });
+                            
+                            avatarMesh = new THREE.Mesh(geometry, material);
+                            avatarMesh.position.set(0, 0, 0);
+                            scene.add(avatarMesh);
+                            
+                            updateStatus('Sprite loaded! Ready to talk');
+                            // Hide load sprite button after successful load
+                            hideLoadSpriteButton();
+                            resolve();
+                        },
+                        undefined,
+                        (error) => {
+                            console.error('Error loading file:', error);
+                            updateStatus('Error loading sprite file');
+                            reject(error);
+                        }
+                    );
+                };
+                
+                reader.onerror = (error) => {
+                    console.error('FileReader error:', error);
+                    reject(error);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Add this in the init() function, after the button handler setup (around line 650):
+
+        // File input handler for sprite loading
+        const spriteInput = document.getElementById('sprite-input');
+        const loadSpriteButton = document.getElementById('load-sprite-button');
+
+        if (loadSpriteButton) {
+            loadSpriteButton.addEventListener('click', () => {
+                spriteInput.click();
+            });
+        }
+
+        if (spriteInput) {
+            spriteInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    console.log('Loading sprite from file:', file.name);
+                    updateStatus('Loading sprite...');
+                    loadSpriteFromFile(file).catch(error => {
+                        console.error('Failed to load sprite:', error);
+                    });
+                }
+            });
+        }
+
+        // Start the application when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
+
