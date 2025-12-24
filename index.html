@@ -515,10 +515,19 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="config.js"></script>
     <script>
         // ============================================================================
         // CONFIGURATION & STATE
         // ============================================================================
+        
+        // Initialize CONFIG if not loaded from config.js
+        if (typeof CONFIG === 'undefined') {
+            window.CONFIG = {
+                OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
+            };
+            console.warn('⚠️ config.js not found. Using default placeholder. Copy config.example.js to config.js and add your API key.');
+        }
 
         const CONFIG = {
             // Sprite sheet dimensions: 2816x606px with 4 frames (704x606 each)
@@ -836,7 +845,7 @@
         }
 
         async function speakText(text) {
-            const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE'; // Replace with your OpenAI API key
+            const OPENAI_API_KEY = window.CONFIG.OPENAI_API_KEY;
             const TTS_API_URL = 'https://api.openai.com/v1/audio/speech';
             
             try {
@@ -1082,7 +1091,7 @@
 
         // Alternative: OpenAI API (better CORS support)
         async function callLLM(userInput) {
-            const OPENAI_API_KEY = 'YOUR_OPENAI_API_KEY_HERE'; // Replace with your OpenAI API key
+            const OPENAI_API_KEY = window.CONFIG.OPENAI_API_KEY;
             const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
             
             try {
