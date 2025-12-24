@@ -1,5 +1,5 @@
-# API Keys and Config
-config.js
+# API Keys and Config (only root level)
+/config.js
 
 # OS Files
 .DS_Store

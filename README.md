@@ -42,6 +42,29 @@ A cozy, interactive 2D pixel art avatar that listens to your voice and responds 
    
    Then open `http://localhost:8000/index.html` in your browser.
 
+## Deployment to Vercel
+
+1. **Push your code to GitHub** (already done)
+
+2. **Import to Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Click "Add New Project"
+   - Import your GitHub repository
+
+3. **Add Environment Variable**
+   - In your Vercel project settings, go to "Environment Variables"
+   - Add a new variable:
+     - **Name**: `OPENAI_API_KEY`
+     - **Value**: Your actual OpenAI API key
+     - **Environment**: Production, Preview, Development (select all)
+
+4. **Deploy**
+   - Vercel will automatically deploy
+   - The app will use the environment variable via the `/api/config` endpoint
+   - Your API key stays secure on the server side
+
+**Note**: The app will automatically detect if it's running on Vercel and use environment variables, or fall back to `config.js` for local development.
+
 ## Character: Pixel
 
 Pixel is a digital friend from Dhaka, Bangladesh. They speak in a chill, empathetic tone and love sharing stories about the city. Keep responses short and casual!

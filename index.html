@@ -515,19 +515,58 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="config.js"></script>
+    <script>
+        // ============================================================================
+        // CONFIGURATION LOADING
+        // ============================================================================
+        
+        // Load config from API (Vercel) or local file (development)
+        (async function loadConfig() {
+            // Try loading from Vercel API endpoint first
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const configScript = await response.text();
+                    // Inject as script tag instead of eval
+                    const script = document.createElement('script');
+                    script.textContent = configScript;
+                    document.head.appendChild(script);
+                    console.log('✅ Config loaded from Vercel environment variables');
+                    return;
+                }
+            } catch (error) {
+                // Not on Vercel or API not available, try local config.js
+            }
+            
+            // Fall back to local config.js for development
+            const script = document.createElement('script');
+            script.src = 'config.js';
+            script.onload = () => {
+                console.log('✅ Config loaded from local config.js');
+            };
+            script.onerror = () => {
+                // No local config either, use placeholder
+                window.CONFIG = {
+                    OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
+                };
+                console.warn('⚠️ No config found. Using placeholder. Set OPENAI_API_KEY in Vercel environment variables or create config.js locally.');
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
     <script>
         // ============================================================================
         // CONFIGURATION & STATE
         // ============================================================================
         
-        // Initialize CONFIG if not loaded from config.js
-        if (typeof CONFIG === 'undefined') {
-            window.CONFIG = {
-                OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
-            };
-            console.warn('⚠️ config.js not found. Using default placeholder. Copy config.example.js to config.js and add your API key.');
-        }
+        // Wait a moment for config to load, then initialize
+        setTimeout(() => {
+            if (typeof CONFIG === 'undefined') {
+                window.CONFIG = {
+                    OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
+                };
+            }
+        }, 100);
 
         const CONFIG = {
             // Sprite sheet dimensions: 2816x606px with 4 frames (704x606 each)
