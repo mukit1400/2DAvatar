@@ -520,6 +520,11 @@
         // CONFIGURATION LOADING
         // ============================================================================
         
+        // Initialize CONFIG immediately to avoid reference errors
+        window.CONFIG = {
+            OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
+        };
+        
         // Load config from API (Vercel) or local file (development)
         (async function loadConfig() {
             // Try loading from Vercel API endpoint first
@@ -527,46 +532,43 @@
                 const response = await fetch('/api/config');
                 if (response.ok) {
                     const configScript = await response.text();
-                    // Inject as script tag instead of eval
+                    // Inject as script tag
                     const script = document.createElement('script');
                     script.textContent = configScript;
                     document.head.appendChild(script);
+                    // Wait a moment for script to execute
+                    await new Promise(resolve => setTimeout(resolve, 50));
                     console.log('✅ Config loaded from Vercel environment variables');
                     return;
+                } else {
+                    // 404 or other error - expected when not on Vercel
+                    // Silently fall through to local config
                 }
             } catch (error) {
-                // Not on Vercel or API not available, try local config.js
+                // Network error - try local config
             }
             
             // Fall back to local config.js for development
-            const script = document.createElement('script');
-            script.src = 'config.js';
-            script.onload = () => {
-                console.log('✅ Config loaded from local config.js');
-            };
-            script.onerror = () => {
-                // No local config either, use placeholder
-                window.CONFIG = {
-                    OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'config.js';
+                script.onload = () => {
+                    console.log('✅ Config loaded from local config.js');
+                    resolve();
                 };
-                console.warn('⚠️ No config found. Using placeholder. Set OPENAI_API_KEY in Vercel environment variables or create config.js locally.');
-            };
-            document.head.appendChild(script);
+                script.onerror = () => {
+                    // No local config either, keep placeholder
+                    console.warn('⚠️ No config found. Using placeholder. Set OPENAI_API_KEY in Vercel environment variables or create config.js locally.');
+                    resolve();
+                };
+                document.head.appendChild(script);
+            });
         })();
     </script>
     <script>
         // ============================================================================
         // CONFIGURATION & STATE
         // ============================================================================
-        
-        // Wait a moment for config to load, then initialize
-        setTimeout(() => {
-            if (typeof CONFIG === 'undefined') {
-                window.CONFIG = {
-                    OPENAI_API_KEY: 'YOUR_OPENAI_API_KEY_HERE'
-                };
-            }
-        }, 100);
 
         const CONFIG = {
             // Sprite sheet dimensions: 2816x606px with 4 frames (704x606 each)
@@ -659,8 +661,11 @@
             return new Promise((resolve, reject) => {
                 const textureLoader = new THREE.TextureLoader();
                 
+                // Try to load sprite - use relative path from current location
+                const spritePath = './avatar_sheet.png';
+                
                 textureLoader.load(
-                    'avatar_sheet.png',
+                    spritePath,
                     (texture) => {
                         console.log('✅ Avatar sprite loaded successfully!');
                         // CRITICAL: Set pixel-perfect filtering
@@ -707,17 +712,33 @@
                     },
                     (error) => {
                         console.error('❌ Error loading avatar sprite:', error);
+                        
+                        // Check if running via file:// protocol
+                        const isFileProtocol = window.location.protocol === 'file:';
+                        const errorHint = isFileProtocol 
+                            ? 'You\'re running via file:// - please use a local server (python3 -m http.server 8000) or use "Load Sprite Sheet" button'
+                            : 'Use "Load Sprite Sheet" button to load the sprite manually';
+                        
                         console.error('Error details:', {
                             message: error.message || 'Unknown error',
-                            path: 'avatar_sheet.png',
-                            hint: 'Make sure the file exists and you\'re running a local server (not file://)'
+                            path: spritePath,
+                            protocol: window.location.protocol,
+                            hint: errorHint
                         });
                         
                         // Show user-friendly error message
-                        updateStatus('⚠️ Sprite not found! Check console for details.');
+                        const statusMsg = isFileProtocol 
+                            ? '⚠️ CORS error! Run a local server or use "Load Sprite Sheet" button.'
+                            : '⚠️ Sprite not found! Use "Load Sprite Sheet" button.';
+                        updateStatus(statusMsg);
                         
-                        // Create a placeholder if sprite fails to load
-                        createPlaceholderAvatar();
+                        // Ensure load sprite button is visible
+                        const loadButton = document.getElementById('load-sprite-button');
+                        if (loadButton) {
+                            loadButton.classList.remove('hidden');
+                        }
+                        
+                        // Don't create placeholder - let user load manually
                         resolve();
                     }
                 );
@@ -1047,88 +1068,8 @@
         }
 
         // ============================================================================
-        // LLM INTEGRATION (PLACEHOLDER)
+        // LLM INTEGRATION
         // ============================================================================
-
-        async function callLLM(userInput) {
-            // ============================================================
-            // INSERT YOUR GEMINI API KEY HERE
-            // ============================================================
-            const GEMINI_API_KEY = 'REMOVED_API_KEY';
-            
-            // Correct Gemini API endpoint format
-            // Try gemini-1.5-flash (faster, free tier) or gemini-1.5-pro (better quality)
-            const MODEL_NAME = 'gemini-1.5-flash'; // or 'gemini-1.5-pro' or 'gemini-pro'
-            const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
-            
-            try {
-                console.log('Calling Gemini API...');
-                
-                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [{
-                                text: `You are a friendly 2D pixel art avatar. Respond briefly and conversationally (1-2 sentences max) to: "${userInput}"`
-                            }]
-                        }]
-                    })
-                });
-                
-                // Log the full response for debugging
-                const responseText = await response.text();
-                console.log('API Response Status:', response.status);
-                console.log('API Response:', responseText);
-                
-                if (!response.ok) {
-                    let errorData;
-                    try {
-                        errorData = JSON.parse(responseText);
-                    } catch (e) {
-                        errorData = { error: { message: responseText } };
-                    }
-                    throw new Error(`API error ${response.status}: ${errorData.error?.message || responseText}`);
-                }
-                
-                const data = JSON.parse(responseText);
-                
-                // Extract response text from Gemini format
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    const responseText = data.candidates[0].content.parts[0].text;
-                    console.log('✅ API Success! Response:', responseText);
-                    return responseText;
-                }
-                
-                throw new Error('Unexpected API response format: ' + JSON.stringify(data));
-                
-            } catch (error) {
-                console.error('❌ LLM API error:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack
-                });
-                
-                // More detailed error message
-                let errorMessage = `API Error: ${error.message}`;
-                if (error.message.includes('404')) {
-                    errorMessage = '404 Error: Model name might be wrong. Try: gemini-1.5-flash, gemini-1.5-pro, or gemini-pro';
-                } else if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-                    errorMessage = 'CORS Error: Gemini API may not work directly from browser. Consider using a proxy server or backend.';
-                } else if (error.message.includes('API_KEY_INVALID') || error.message.includes('403')) {
-                    errorMessage = 'API Key Error: Check if your API key is valid and has proper permissions.';
-                }
-                
-                updateStatus(errorMessage);
-                
-                // Fallback response if API fails
-                return `I heard you say "${userInput}". [API Error: ${error.message}]`;
-            }
-        }
-
-        // Alternative: OpenAI API (better CORS support)
         async function callLLM(userInput) {
             const OPENAI_API_KEY = window.CONFIG.OPENAI_API_KEY;
             const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
