@@ -9,10 +9,9 @@ export default function handler(req, res) {
     // Get API key from Vercel environment variables
     const apiKey = process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY_HERE';
     
-    // Return as JavaScript that sets the CONFIG object
-    const configScript = `const CONFIG = {
-    OPENAI_API_KEY: '${apiKey}'
-};`;
+    // Return as JavaScript that updates the CONFIG object
+    const configScript = `window.CONFIG = window.CONFIG || {};
+window.CONFIG.OPENAI_API_KEY = '${apiKey}';`;
     
     res.status(200).send(configScript);
 }

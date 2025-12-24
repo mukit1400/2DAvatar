@@ -360,22 +360,29 @@
             flex-direction: column;
             gap: 16px;
             background: transparent;
-            overflow: visible; /* No scroll - bubbles float */
-            /* Fade mask for top and bottom */
+            overflow-y: auto; /* Allow scrolling */
+            overflow-x: hidden;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+            -ms-overflow-style: none; /* Hide scrollbar IE/Edge */
+            justify-content: flex-end; /* Keep messages at bottom */
+            /* Fade mask for top only - oldest messages fade, newest stay visible */
             mask-image: linear-gradient(
                 to bottom,
                 transparent 0%,
-                black 10%,
-                black 90%,
-                transparent 100%
+                black 20%,
+                black 100%
             );
             -webkit-mask-image: linear-gradient(
                 to bottom,
                 transparent 0%,
-                black 10%,
-                black 90%,
-                transparent 100%
+                black 20%,
+                black 100%
             );
+        }
+        
+        /* Hide scrollbar for Chrome/Safari */
+        #chat-messages::-webkit-scrollbar {
+            display: none;
         }
 
         .chat-message {
@@ -526,7 +533,7 @@
         };
         
         // Load config from API (Vercel) or local file (development)
-        (async function loadConfig() {
+        window.configLoaded = (async function loadConfig() {
             // Try loading from Vercel API endpoint first
             try {
                 const response = await fetch('/api/config');
@@ -1160,14 +1167,17 @@ You are a listener who knows life in the city is chaotic. You are the calm space
             
             chatMessages.appendChild(messageDiv);
             
-            // Keep only last 10 messages to prevent overflow
+            // Keep only last 15 messages to prevent overflow (increased for better scrolling effect)
             const messages = chatMessages.querySelectorAll('.chat-message');
-            if (messages.length > 10) {
+            if (messages.length > 15) {
                 messages[0].remove();
             }
             
-            // Scroll container to show latest message (if needed for positioning)
-            // Messages will fade out naturally via CSS mask
+            // Auto-scroll to bottom to show latest message
+            // Use setTimeout to ensure DOM is updated
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 0);
         }
 
         async function handleUserInput(userInput) {
@@ -1391,8 +1401,12 @@ You are a listener who knows life in the city is chaotic. You are the calm space
             });
         }
 
-        // Start the application when page loads
-        window.addEventListener('load', init);
+        // Start the application when page loads, after config is loaded
+        window.addEventListener('load', async () => {
+            // Wait for config to load before initializing
+            await window.configLoaded;
+            init();
+        });
     </script>
 </body>
 </html>
